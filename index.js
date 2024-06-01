@@ -1,4 +1,4 @@
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
@@ -6,7 +6,9 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(cors());
+app.use(cors({
+    origin: ['http://localhost:5173', 'http://localhost:5174']
+}));
 app.use(express.json());
 
 const user = process.env.DB_USER;
@@ -32,6 +34,7 @@ async function run() {
         const usersCollection = database.collection("users");
         const testimonialsCollection = database.collection("testimonials");
         const blogsCollection = database.collection("blogs");
+        const subscribesCollection = database.collection("subscribes");
 
         //<---jwt token req--->
         app.post("/jwt", async (req, res) => {
@@ -61,6 +64,24 @@ async function run() {
         //<---get all blogs api--->
         app.get("/blogs", async (req, res) => {
             const result = await blogsCollection.find().project({ title: 1, author: 1, postDate: 1, image: 1, description: 1 }).limit(6).toArray();
+            res.send(result);
+        })
+
+        //<---get a single blog data api--->
+        app.get("/blog/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await blogsCollection.findOne(query);
+            res.send(result);
+        })
+
+        //<---save subscribes data in db--->
+        app.post("/subscribes", async (req, res) => {
+            const subscribeUser = req.body;
+            const query = { email: subscribeUser.email };
+            const isExists = await subscribesCollection.findOne(query);
+            if(isExists) return res.send({message: 'Already subscribes'});
+            const result = await subscribesCollection.insertOne(subscribeUser);
             res.send(result);
         })
 

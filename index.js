@@ -75,6 +75,14 @@ async function run() {
             res.send(result);
         })
 
+        //<---get a user role api--->
+        app.get("/user/role/:email", async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const result = await usersCollection.findOne(query);
+            res.send(result.role);
+        })
+
         //<---save subscribes data in db--->
         app.post("/subscribes", async (req, res) => {
             const subscribeUser = req.body;

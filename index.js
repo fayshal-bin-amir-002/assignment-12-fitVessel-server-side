@@ -30,6 +30,7 @@ async function run() {
 
         const database = client.db("fitVesselDB");
         const usersCollection = database.collection("users");
+        const testimonialsCollection = database.collection("testimonials");
 
         //<---jwt token req--->
         app.post("/jwt", async(req, res) => {
@@ -45,8 +46,14 @@ async function run() {
             const isExist = await usersCollection.findOne(query);
 
             if(isExist) return res.send({message: "User already exists!"});
-            
+
             const result = await usersCollection.insertOne(user);
+            res.send(result);
+        })
+
+        //<---get all testimonials api--->
+        app.get("/testimonials", async(req, res) => {
+            const result = await testimonialsCollection.find().toArray();
             res.send(result);
         })
 

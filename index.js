@@ -31,29 +31,36 @@ async function run() {
         const database = client.db("fitVesselDB");
         const usersCollection = database.collection("users");
         const testimonialsCollection = database.collection("testimonials");
+        const blogsCollection = database.collection("blogs");
 
         //<---jwt token req--->
-        app.post("/jwt", async(req, res) => {
+        app.post("/jwt", async (req, res) => {
             const user = req.body;
-            const token = jwt.sign(user, secret_access_token, {expiresIn: "1h"});
-            res.send({token: token});
+            const token = jwt.sign(user, secret_access_token, { expiresIn: "1h" });
+            res.send({ token: token });
         })
 
         //<---save a user to db--->
-        app.post("/users", async (req,res) => {
+        app.post("/users", async (req, res) => {
             const user = req.body;
             const query = { email: user?.email };
             const isExist = await usersCollection.findOne(query);
 
-            if(isExist) return res.send({message: "User already exists!"});
+            if (isExist) return res.send({ message: "User already exists!" });
 
             const result = await usersCollection.insertOne(user);
             res.send(result);
         })
 
         //<---get all testimonials api--->
-        app.get("/testimonials", async(req, res) => {
+        app.get("/testimonials", async (req, res) => {
             const result = await testimonialsCollection.find().toArray();
+            res.send(result);
+        })
+
+        //<---get all blogs api--->
+        app.get("/blogs", async (req, res) => {
+            const result = await blogsCollection.find().project({ title: 1, author: 1, postDate: 1, image: 1, description: 1 }).limit(6).toArray();
             res.send(result);
         })
 

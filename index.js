@@ -42,10 +42,10 @@ async function run() {
 
         //<---middleware for verify token--->
         const verifyToken = (req, res, next) => {
-            if(!req.headers.authorization) {
+            if (!req.headers.authorization) {
                 return res.status(401).send({ message: "Unauthorized Access" });
             }
-            
+
             const token = req.headers.authorization.split(' ')[1];
 
             jwt.verify(token, secret_access_token, (error, decoded) => {
@@ -184,10 +184,10 @@ async function run() {
         app.post("/payment", verifyToken, async (req, res) => {
             const email = req?.query?.email;
 
-            if(email !== req.decoded.email) {
+            if (email !== req.decoded.email) {
                 return res.status(403).send({ message: 'Forbidden Access' });
             }
-            
+
             const paymentData = req.body;
             const name = paymentData.class.name;
 
@@ -220,13 +220,25 @@ async function run() {
 
             const query = { _id: new ObjectId(id) };
 
-            if(vote === 'like') {
+            if (vote === 'like') {
                 const result = await blogsCollection.updateOne(query, { $inc: { likes: 1 } });
                 res.send(result);
             } else {
                 const result = await blogsCollection.updateOne(query, { $inc: { dislikes: 1 } });
                 res.send(result);
             }
+        })
+
+        //<---api for patch a vote of community posts--->
+        app.post("/trainer-requert", verifyToken, async (req, res) => {
+            const newTrainer = req.body;
+            const email = newTrainer.email;
+            const query = { email: email }
+            const isExists = await trainersCollection.findOne(query);
+            if(isExists && isExists?.status === 'verified') return res.send({message: 'You are already a trainer.'});
+            if(isExists && isExists?.status === 'pending') return res.send({message: 'Already requested, please wait for admin approval.'});
+            const result = await trainersCollection.insertOne(newTrainer);
+            res.send(result);
         })
 
 

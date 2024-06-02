@@ -39,6 +39,24 @@ async function run() {
         const classesCollection = database.collection("classes");
         const paymentsCollection = database.collection("payments");
 
+
+        //<---middleware for verify token--->
+        const verifyToken = (req, res, next) => {
+            if(!req.headers.authorization) {
+                return res.status(401).send({ message: "Unauthorized Access" });
+            }
+            
+            const token = req.headers.authorization.split(' ')[1];
+
+            jwt.verify(token, secret_access_token, (error, decoded) => {
+                if (error) {
+                    return res.status(401).send({ message: "Unauthorized Access" });
+                }
+                req.decoded = decoded;
+                next();
+            })
+        }
+
         //<---jwt token req--->
         app.post("/jwt", async (req, res) => {
             const user = req.body;
@@ -163,10 +181,15 @@ async function run() {
         })
 
         //<---post api for save the payment and increase the class total booking--->
-        app.post("/payment", async (req, res) => {
+        app.post("/payment", verifyToken, async (req, res) => {
+            const email = req?.query?.email;
+
+            if(email !== req.decoded.email) {
+                return res.status(403).send({ message: 'Forbidden Access' });
+            }
+            
             const paymentData = req.body;
             const name = paymentData.class.name;
-            const trainerName = paymentData.trainer.name;
 
             // const query1 = { 'class.name': { $regex: name, $options: 'i' } };
             // const query0 = { 'trainer.name': { $regex: trainerName, $options: 'i' } };

@@ -37,6 +37,7 @@ async function run() {
         const subscribesCollection = database.collection("subscribes");
         const trainersCollection = database.collection("trainers");
         const classesCollection = database.collection("classes");
+        const paymentsCollection = database.collection("payments");
 
         //<---jwt token req--->
         app.post("/jwt", async (req, res) => {
@@ -97,13 +98,13 @@ async function run() {
 
         //<---get 3 traines data api--->
         app.get("/teams", async (req, res) => {
-            const result = await trainersCollection.find({status: 'verified'}).project({ name: 1, image: 1, biography: 1, skills: 1, experience: 1 }).limit(3).toArray();
+            const result = await trainersCollection.find({ status: 'verified' }).project({ name: 1, image: 1, biography: 1, skills: 1, experience: 1 }).limit(3).toArray();
             res.send(result);
         })
 
         //<---get all trainers data api--->
         app.get("/trainers", async (req, res) => {
-            const result = await trainersCollection.find({status: 'verified'}).toArray();
+            const result = await trainersCollection.find({ status: 'verified' }).toArray();
             res.send(result);
         })
 
@@ -158,7 +159,22 @@ async function run() {
                 }
             ]).skip(page * 6).limit(6).toArray();
 
-            res.send({result, totalclass});
+            res.send({ result, totalclass });
+        })
+
+        //<---post api for save the payment and increase the class total booking--->
+        app.post("/payment", async (req, res) => {
+            const paymentData = req.body;
+            const name = paymentData.class.name;
+            const trainerName = paymentData.trainer.name;
+
+            // const query1 = { 'class.name': { $regex: name, $options: 'i' } };
+            // const query0 = { 'trainer.name': { $regex: trainerName, $options: 'i' } };
+            const query2 = { name: { $regex: name, $options: 'i' } };
+
+            const result = await paymentsCollection.insertOne(paymentData);
+            await classesCollection.updateOne(query2, { $inc: { totalBooking: 1 } });
+            res.send(result);
         })
 
         // Send a ping to confirm a successful connection

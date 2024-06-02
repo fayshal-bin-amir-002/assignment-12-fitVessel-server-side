@@ -35,6 +35,7 @@ async function run() {
         const testimonialsCollection = database.collection("testimonials");
         const blogsCollection = database.collection("blogs");
         const subscribesCollection = database.collection("subscribes");
+        const trainersCollection = database.collection("trainers");
 
         //<---jwt token req--->
         app.post("/jwt", async (req, res) => {
@@ -88,8 +89,14 @@ async function run() {
             const subscribeUser = req.body;
             const query = { email: subscribeUser.email };
             const isExists = await subscribesCollection.findOne(query);
-            if(isExists) return res.send({message: 'Already subscribes'});
+            if (isExists) return res.send({ message: 'Already subscribes' });
             const result = await subscribesCollection.insertOne(subscribeUser);
+            res.send(result);
+        })
+
+        //<---get 3 traines data api--->
+        app.get("/teams", async (req, res) => {
+            const result = await trainersCollection.find().project({ name: 1, image: 1, biography: 1, skills: 1 }).limit(3).toArray();
             res.send(result);
         })
 

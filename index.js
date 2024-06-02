@@ -100,9 +100,17 @@ async function run() {
             res.send(result);
         })
 
-        //<---get all traines data api--->
+        //<---get all trainers data api--->
         app.get("/trainers", async (req, res) => {
             const result = await trainersCollection.find().toArray();
+            res.send(result);
+        })
+
+        //<---get a single trainer data api--->
+        app.get("/trainer-details/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await trainersCollection.findOne(query);
             res.send(result);
         })
 

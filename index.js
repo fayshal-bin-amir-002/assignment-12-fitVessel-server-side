@@ -36,6 +36,7 @@ async function run() {
         const blogsCollection = database.collection("blogs");
         const subscribesCollection = database.collection("subscribes");
         const trainersCollection = database.collection("trainers");
+        const classesCollection = database.collection("classes");
 
         //<---jwt token req--->
         app.post("/jwt", async (req, res) => {
@@ -111,6 +112,39 @@ async function run() {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await trainersCollection.findOne(query);
+            res.send(result);
+        })
+
+        //<---get all classes data with the trainer data api--->
+        app.get("/classes", async (req, res) => {
+            const result = await classesCollection.aggregate([
+                {
+                    $lookup: {
+                        from: "trainers",
+                        let: { skill: "$name" },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: { $in: ["$$skill", "$skills"] }
+                                }
+                            },
+                            {
+                                $project: {
+                                    _id: 1,
+                                    image: 1
+                                }
+                            }
+                        ],
+                        as: "matchedTrainers"
+                    }
+                },
+                {
+                    $match: {
+                        matchedTrainers: { $ne: [] }
+                    }
+                }
+            ]).toArray();
+
             res.send(result);
         })
 

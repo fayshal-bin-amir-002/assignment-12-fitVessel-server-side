@@ -200,6 +200,36 @@ async function run() {
             res.send(result);
         })
 
+        //<---api for all community posts--->
+        app.get("/community", async (req, res) => {
+
+            const page = parseInt(req.query.page);
+
+            const totalBlogs = await blogsCollection.countDocuments();
+
+            const blogs = await blogsCollection.find().skip(page * 6).limit(6).toArray();
+
+            res.send({ blogs, totalBlogs });
+        })
+
+        //<---api for patch a vote of community posts--->
+        app.patch("/voteBlog", verifyToken, async (req, res) => {
+
+            const id = req.body.id;
+            const vote = req.body.vote;
+
+            const query = { _id: new ObjectId(id) };
+
+            if(vote === 'like') {
+                const result = await blogsCollection.updateOne(query, { $inc: { likes: 1 } });
+                res.send(result);
+            } else {
+                const result = await blogsCollection.updateOne(query, { $inc: { dislikes: 1 } });
+                res.send(result);
+            }
+        })
+
+
         // Send a ping to confirm a successful connection
         // await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");

@@ -96,7 +96,13 @@ async function run() {
 
         //<---get 3 traines data api--->
         app.get("/teams", async (req, res) => {
-            const result = await trainersCollection.find().project({ name: 1, image: 1, biography: 1, skills: 1 }).limit(3).toArray();
+            const result = await trainersCollection.find().project({ name: 1, image: 1, biography: 1, skills: 1, experience: 1 }).limit(3).toArray();
+            res.send(result);
+        })
+
+        //<---get all traines data api--->
+        app.get("/trainers", async (req, res) => {
+            const result = await trainersCollection.find().toArray();
             res.send(result);
         })
 

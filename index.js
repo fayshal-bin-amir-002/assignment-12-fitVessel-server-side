@@ -116,6 +116,14 @@ async function run() {
         })
 
         //<---get all classes data with the trainer data api--->
+        app.get("/featured-classes", async (req, res) => {
+            const result = await classesCollection.aggregate(
+                [{ $sort: { totalBooking: -1 } }]
+            ).limit(6).toArray();
+
+            res.send(result);
+        })
+        //<---get all classes data with the trainer data api--->
         app.get("/classes", async (req, res) => {
             const result = await classesCollection.aggregate([
                 {

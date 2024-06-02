@@ -97,13 +97,13 @@ async function run() {
 
         //<---get 3 traines data api--->
         app.get("/teams", async (req, res) => {
-            const result = await trainersCollection.find().project({ name: 1, image: 1, biography: 1, skills: 1, experience: 1 }).limit(3).toArray();
+            const result = await trainersCollection.find({status: 'verified'}).project({ name: 1, image: 1, biography: 1, skills: 1, experience: 1 }).limit(3).toArray();
             res.send(result);
         })
 
         //<---get all trainers data api--->
         app.get("/trainers", async (req, res) => {
-            const result = await trainersCollection.find().toArray();
+            const result = await trainersCollection.find({status: 'verified'}).toArray();
             res.send(result);
         })
 
@@ -115,7 +115,7 @@ async function run() {
             res.send(result);
         })
 
-        //<---get all classes data with the trainer data api--->
+        //<---get top booked featured classes api--->
         app.get("/featured-classes", async (req, res) => {
             const result = await classesCollection.aggregate(
                 [{ $sort: { totalBooking: -1 } }]
@@ -125,6 +125,11 @@ async function run() {
         })
         //<---get all classes data with the trainer data api--->
         app.get("/classes", async (req, res) => {
+
+            const page = parseInt(req.query.page);
+
+            const totalclass = await classesCollection.countDocuments();
+
             const result = await classesCollection.aggregate([
                 {
                     $lookup: {
@@ -151,9 +156,9 @@ async function run() {
                         matchedTrainers: { $ne: [] }
                     }
                 }
-            ]).toArray();
+            ]).skip(page * 6).limit(6).toArray();
 
-            res.send(result);
+            res.send({result, totalclass});
         })
 
         // Send a ping to confirm a successful connection

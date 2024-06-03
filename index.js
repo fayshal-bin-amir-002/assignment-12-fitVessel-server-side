@@ -402,6 +402,17 @@ async function run() {
             res.send(result);
         })
 
+        //<---post a new blog by admin--->
+        app.post("/add-blog", verifyToken, verifyAdmin, async (req, res) => {
+            if (req?.decoded?.email !== req.query.email) {
+                return res.status(403).send({ message: 'Forbidden Access' });
+            }
+            const newBlog = req.body;
+            
+            const result = await blogsCollection.insertOne(newBlog);
+            res.send(result);
+        })
+
 
         // Send a ping to confirm a successful connection
         // await client.db("admin").command({ ping: 1 });

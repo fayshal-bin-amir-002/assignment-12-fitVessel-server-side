@@ -268,12 +268,51 @@ async function run() {
 
         //<---api for all newsletter subscribers--->
         app.get("/newsletters", verifyToken, verifyAdmin, async (req, res) => {
-            console.log(req?.decoded?.email);
-            console.log(req.query.email);
+
             if (req?.decoded?.email !== req.query.email) {
                 return res.status(403).send({ message: 'Forbidden Access' });
             }
             const result = await subscribesCollection.find().toArray();
+            res.send(result);
+        })
+
+        //<---api for all trainers for dashboard--->
+        app.get("/trainers-db", verifyToken, verifyAdmin, async (req, res) => {
+
+            if (req?.decoded?.email !== req.query.email) {
+                return res.status(403).send({ message: 'Forbidden Access' });
+            }
+
+            const query = { status: 'verified' };
+
+            const options = {
+                projection: { email: 1, name: 1, status: 1 }
+            };
+
+            const result = await trainersCollection.find(query, options).toArray();
+            res.send(result);
+        })
+
+        //<---delete a trainer from trainers collection and update role in users collection--->
+        app.delete("/trainer-delete/:email", verifyToken, verifyAdmin, async (req, res) => {
+
+            if (req?.decoded?.email !== req.query.email) {
+                return res.status(403).send({ message: 'Forbidden Access' });
+            }
+            const email = req.params.email;
+
+            const query = { email: email };
+
+            const updateUser = {
+                $set: {
+                  role: 'member'
+                },
+              };
+
+            await usersCollection.updateOne(query, updateUser);
+
+            const result = await trainersCollection.deleteOne(query);
+
             res.send(result);
         })
 

@@ -41,7 +41,7 @@ async function run() {
 
 
         //<---middleware for verify token--->
-        const verifyToken = (req, res, next) => {
+        const verifyToken = async (req, res, next) => {
             if (!req.headers.authorization) {
                 return res.status(401).send({ message: "Unauthorized Access" });
             }
@@ -55,6 +55,28 @@ async function run() {
                 req.decoded = decoded;
                 next();
             })
+        }
+
+        //<---middleware for verify admin--->
+        const verifyAdmin = async (req, res, next) => {
+            const user = req.decoded;
+            const query = { email: user?.email };
+            const result = await usersCollection.findOne(query);
+            if (!result || result?.role !== 'admin') {
+                return res.status(401).send({ message: "Unauthorized Access" });
+            }
+            next();
+        }
+
+        //<---middleware for verify admin--->
+        const verifyTrainer = async (req, res, next) => {
+            const user = req.decoded;
+            const query = { email: user?.email };
+            const result = await usersCollection.findOne(query);
+            if (!result || result?.role !== 'trainer') {
+                return res.status(401).send({ message: "Unauthorized Access" });
+            }
+            next();
         }
 
         //<---jwt token req--->
@@ -229,14 +251,14 @@ async function run() {
             }
         })
 
-        //<---api for patch a vote of community posts--->
+        //<---api for to be a trainer request--->
         app.post("/trainer-requert", verifyToken, async (req, res) => {
             const newTrainer = req.body;
             const email = newTrainer.email;
             const query = { email: email }
             const isExists = await trainersCollection.findOne(query);
-            if(isExists && isExists?.status === 'verified') return res.send({message: 'You are already a trainer.'});
-            if(isExists && isExists?.status === 'pending') return res.send({message: 'Already requested, please wait for admin approval.'});
+            if (isExists && isExists?.status === 'verified') return res.send({ message: 'You are already a trainer.' });
+            if (isExists && isExists?.status === 'pending') return res.send({ message: 'Already requested, please wait for admin approval.' });
             const result = await trainersCollection.insertOne(newTrainer);
             res.send(result);
         })

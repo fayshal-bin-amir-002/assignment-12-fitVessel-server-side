@@ -373,11 +373,22 @@ async function run() {
                     ...userInfo
                 },
             };
-            
+
             const result = await trainersCollection.updateOne(query, updateDoc);
 
             res.send(result);
 
+        })
+
+        //<---get all classes name--->
+        app.get("/classes-name", async (req, res) => {
+            const query = {  };
+
+            const options = {
+                projection: { _id: 0, name: 1, }
+            };
+            const result = await classesCollection.find(query, options).toArray();
+            res.send(result)
         })
 
 

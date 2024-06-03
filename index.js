@@ -293,6 +293,19 @@ async function run() {
             res.send(result);
         })
 
+        //<---api for all applied trainers for dashboard--->
+        app.get("/appliedTrainers", verifyToken, verifyAdmin, async (req, res) => {
+
+            if (req?.decoded?.email !== req.query.email) {
+                return res.status(403).send({ message: 'Forbidden Access' });
+            }
+
+            const query = { status: 'pending' };
+
+            const result = await trainersCollection.find(query).toArray();
+            res.send(result);
+        })
+
         //<---delete a trainer from trainers collection and update role in users collection--->
         app.delete("/trainer-delete/:email", verifyToken, verifyAdmin, async (req, res) => {
 
@@ -305,15 +318,66 @@ async function run() {
 
             const updateUser = {
                 $set: {
-                  role: 'member'
+                    role: 'member'
                 },
-              };
+            };
 
             await usersCollection.updateOne(query, updateUser);
 
             const result = await trainersCollection.deleteOne(query);
 
             res.send(result);
+        })
+
+        //<---update a user request to be a trainer (accept)--->
+        app.patch("/updateAppliedTrainersAccept", verifyToken, verifyAdmin, async (req, res) => {
+
+            if (req?.decoded?.email !== req.query.email) {
+                return res.status(403).send({ message: 'Forbidden Access' });
+            }
+            const user = req.body;
+            const email = user?.email;
+            const query = { email: email };
+
+            const updateDoc1 = {
+                $set: {
+                    status: 'verified'
+                },
+            };
+
+            const updateDoc2 = {
+                $set: {
+                    role: 'trainer'
+                },
+            };
+
+            await usersCollection.updateOne(query, updateDoc2);
+            const result = await trainersCollection.updateOne(query, updateDoc1);
+
+            res.send(result);
+
+        })
+
+        //<---update a user request to be a trainer (reject)--->
+        app.patch("/updateAppliedTrainersReject", verifyToken, verifyAdmin, async (req, res) => {
+
+            if (req?.decoded?.email !== req.query.email) {
+                return res.status(403).send({ message: 'Forbidden Access' });
+            }
+            const userInfo = req.body;
+            const email = userInfo?.email;
+            const query = { email: email };
+
+            const updateDoc = {
+                $set: {
+                    ...userInfo
+                },
+            };
+            
+            const result = await trainersCollection.updateOne(query, updateDoc);
+
+            res.send(result);
+
         })
 
 

@@ -252,7 +252,10 @@ async function run() {
         })
 
         //<---api for to be a trainer request--->
-        app.post("/trainer-requert", verifyToken, async (req, res) => {
+        app.post("/trainer-request", verifyToken, async (req, res) => {
+            if (req?.decoded?.email !== req.query.email) {
+                return res.status(403).send({ message: 'Forbidden Access' });
+            }
             const newTrainer = req.body;
             const email = newTrainer.email;
             const query = { email: email }
@@ -260,6 +263,17 @@ async function run() {
             if (isExists && isExists?.status === 'verified') return res.send({ message: 'You are already a trainer.' });
             if (isExists && isExists?.status === 'pending') return res.send({ message: 'Already requested, please wait for admin approval.' });
             const result = await trainersCollection.insertOne(newTrainer);
+            res.send(result);
+        })
+
+        //<---api for all newsletter subscribers--->
+        app.get("/newsletters", verifyToken, verifyAdmin, async (req, res) => {
+            console.log(req?.decoded?.email);
+            console.log(req.query.email);
+            if (req?.decoded?.email !== req.query.email) {
+                return res.status(403).send({ message: 'Forbidden Access' });
+            }
+            const result = await subscribesCollection.find().toArray();
             res.send(result);
         })
 

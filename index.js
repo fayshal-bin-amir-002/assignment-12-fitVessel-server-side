@@ -193,8 +193,8 @@ async function run() {
                     }
                 },
                 {
-                    $match: {
-                        matchedTrainers: { $ne: [] }
+                    $addFields: {
+                        matchedTrainers: { $ifNull: ["$matchedTrainers", []] }
                     }
                 }
             ]).skip(page * 6).limit(6).toArray();
@@ -382,13 +382,24 @@ async function run() {
 
         //<---get all classes name--->
         app.get("/classes-name", async (req, res) => {
-            const query = {  };
+            const query = {};
 
             const options = {
                 projection: { _id: 0, name: 1, }
             };
             const result = await classesCollection.find(query, options).toArray();
             res.send(result)
+        })
+
+        //<---post a new class by admin--->
+        app.post("/add-class", verifyToken, verifyAdmin, async (req, res) => {
+            if (req?.decoded?.email !== req.query.email) {
+                return res.status(403).send({ message: 'Forbidden Access' });
+            }
+            const newclass = req.body;
+            
+            const result = await classesCollection.insertOne(newclass);
+            res.send(result);
         })
 
 

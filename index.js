@@ -547,6 +547,19 @@ async function run() {
             res.send(result);
         })
 
+        //<----get members applied data ------>
+        app.get("/active-logs/:email", verifyToken, async (req, res) => {
+            if (req?.query?.email !== req.decoded.email) {
+                return res.status(403).send({ message: 'Forbidden Access' });
+            }
+            const email = req.params.email;
+            const query = {
+                email: email
+            }
+            const result = await trainersCollection.find(query).toArray();
+            res.send(result);
+        })
+
 
 
         // Send a ping to confirm a successful connection

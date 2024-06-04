@@ -15,6 +15,9 @@ const user = process.env.DB_USER;
 const pass = process.env.DB_PASS;
 const secret_access_token = process.env.SECRET_ACCESS_TOKEN;
 
+const stripe = require("stripe")(process.env.STRIPE_SK);
+
+
 const uri = `mongodb+srv://${user}:${pass}@cluster0.0hiczfr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 const client = new MongoClient(uri, {
@@ -192,9 +195,11 @@ async function run() {
                             {
                                 $match: {
                                     $expr: {
-                                        $in: ["$$skill", { $map: { input: "$skills", as: "skill", in: "$$skill.value" } }]
+                                        $and: [
+                                            { $in: ["$$skill", { $map: { input: "$skills", as: "skill", in: "$$skill.value" } }] },
+                                            { $eq: ["$status", "verified"] }
+                                        ]
                                     }
-
                                 }
                             },
                             {
@@ -215,26 +220,6 @@ async function run() {
             ]).skip(page * 6).limit(6).toArray();
 
             res.send({ result, totalclass });
-        })
-
-        //<---post api for save the payment and increase the class total booking--->
-        app.post("/payment", verifyToken, async (req, res) => {
-            const email = req?.query?.email;
-
-            if (email !== req.decoded.email) {
-                return res.status(403).send({ message: 'Forbidden Access' });
-            }
-
-            const paymentData = req.body;
-            const name = paymentData.class.name;
-
-            // const query1 = { 'class.name': { $regex: name, $options: 'i' } };
-            // const query0 = { 'trainer.name': { $regex: trainerName, $options: 'i' } };
-            const query2 = { name: { $regex: name, $options: 'i' } };
-
-            const result = await paymentsCollection.insertOne(paymentData);
-            await classesCollection.updateOne(query2, { $inc: { totalBooking: 1 } });
-            res.send(result);
         })
 
         //<---api for all community posts--->
@@ -454,18 +439,92 @@ async function run() {
             if (req?.decoded?.email !== req.query.email) {
                 return res.status(403).send({ message: 'Forbidden Access' });
             }
-            const newSlot = req.body;
-            const result = await slotsCollection.insertOne(newSlot);
+            const newSlots = req.body; console.log(newSlots);
+            const result = await slotsCollection.insertMany(newSlots);
             res.send(result)
         })
 
-        //<---get trainer's added slots--->
-        app.get("/trainer-slots/:id", async(req, res) => {
+        //<---get all available trainer's added slots--->
+        app.get("/trainer-slots/:id", async (req, res) => {
             const id = req.params.id;
             const query = { 'trainer.id': id, status: 'available' };
             const result = await slotsCollection.find(query).toArray();
             res.send(result);
         })
+
+        //<---get all available trainer's added slots--->
+        app.get("/myadded-slots/:id", verifyToken, verifyTrainer, async (req, res) => {
+            const email = req?.query?.email;
+
+            if (email !== req.decoded.email) {
+                return res.status(403).send({ message: 'Forbidden Access' });
+            }
+            
+            const id = req.params.id;
+            const query = { 'trainer.id': id };
+            const result = await slotsCollection.find(query).toArray();
+            res.send(result);
+        })
+
+        //<---post api for save the payment and increase the class total booking--->
+        app.post("/payment", verifyToken, async (req, res) => {
+            const email = req?.query?.email;
+
+            if (email !== req.decoded.email) {
+                return res.status(403).send({ message: 'Forbidden Access' });
+            }
+
+            const paymentData = req.body; console.log(paymentData);
+            const name = paymentData.class.cName;
+
+            // const query1 = { 'class.name': { $regex: name, $options: 'i' } };
+            // const query0 = { 'trainer.name': { $regex: trainerName, $options: 'i' } };
+
+            const query = { name: { $regex: name, $options: 'i' } };
+            const query0 = { _id: new ObjectId(paymentData.class.sId) };
+            const updateSlot = {
+                $set: {
+                    status: "booked",
+                    bookedBy: {
+                        name: paymentData.user.name,
+                        email: paymentData.user.email
+                    }
+                },
+            };
+
+            await classesCollection.updateOne(query, { $inc: { totalBooking: 1 } });
+
+            await slotsCollection.updateOne(query0, updateSlot);
+
+            const result = await paymentsCollection.insertOne(paymentData);
+            res.send(result);
+        })
+
+        app.post("/create-payment-intent", verifyToken, async (req, res) => {
+
+            const email = req?.query?.email;
+
+            if (email !== req.decoded.email) {
+                return res.status(403).send({ message: 'Forbidden Access' });
+            }
+
+            const { price } = req.body;
+
+            const priceInCent = parseFloat(price) * 100;
+
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: priceInCent,
+                currency: "usd",
+                automatic_payment_methods: {
+                    enabled: true,
+                },
+            });
+
+            res.send({
+                clientSecret: paymentIntent.client_secret,
+            });
+        });
+
 
 
         // Send a ping to confirm a successful connection

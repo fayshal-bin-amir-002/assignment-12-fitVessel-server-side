@@ -452,16 +452,16 @@ async function run() {
             res.send(result);
         })
 
-        //<---get all available trainer's added slots--->
-        app.get("/myadded-slots/:id", verifyToken, verifyTrainer, async (req, res) => {
+        //<---get all trainer's added slots--->
+        app.get("/myadded-slots/:email", verifyToken, verifyTrainer, async (req, res) => {
             const email = req?.query?.email;
 
             if (email !== req.decoded.email) {
                 return res.status(403).send({ message: 'Forbidden Access' });
             }
-            
-            const id = req.params.id;
-            const query = { 'trainer.id': id };
+
+            const trainerEmail = req.params.email;
+            const query = { 'trainer.email': trainerEmail };
             const result = await slotsCollection.find(query).toArray();
             res.send(result);
         })
@@ -524,6 +524,18 @@ async function run() {
                 clientSecret: paymentIntent.client_secret,
             });
         });
+
+        //<----delete a slot by trainer------>
+        app.delete("/delete-slot/:id", verifyToken, verifyTrainer, async (req, res) => {
+            const email = req?.query?.email;
+            const id = req.params.id;
+            if (email !== req.decoded.email) {
+                return res.status(403).send({ message: 'Forbidden Access' });
+            }
+            const query = { _id: new ObjectId(id) };
+            const result = await slotsCollection.deleteOne(query);
+            res.send(result);
+        })
 
 
 

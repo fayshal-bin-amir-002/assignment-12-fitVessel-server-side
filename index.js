@@ -38,6 +38,7 @@ async function run() {
         const trainersCollection = database.collection("trainers");
         const classesCollection = database.collection("classes");
         const paymentsCollection = database.collection("payments");
+        const slotsCollection = database.collection("slots");
 
 
         //<---middleware for verify token--->
@@ -68,7 +69,18 @@ async function run() {
             next();
         }
 
-        //<---middleware for verify admin--->
+        //<---middleware for verify admin or trainer--->
+        const verifyAdminAndTrainer = async (req, res, next) => {
+            const user = req.decoded;
+            const query = { email: user?.email };
+            const result = await usersCollection.findOne(query);
+            if (!result || (result?.role !== 'admin' || result?.role !== 'trainer')) {
+                return res.status(401).send({ message: "Unauthorized Access" });
+            }
+            next();
+        }
+
+        //<---middleware for verify trainer--->
         const verifyTrainer = async (req, res, next) => {
             const user = req.decoded;
             const query = { email: user?.email };
@@ -179,7 +191,10 @@ async function run() {
                         pipeline: [
                             {
                                 $match: {
-                                    $expr: { $in: ["$$skill", "$skills"] }
+                                    $expr: {
+                                        $in: ["$$skill", { $map: { input: "$skills", as: "skill", in: "$$skill.value" } }]
+                                    }
+
                                 }
                             },
                             {
@@ -397,19 +412,58 @@ async function run() {
                 return res.status(403).send({ message: 'Forbidden Access' });
             }
             const newclass = req.body;
-            
+
             const result = await classesCollection.insertOne(newclass);
             res.send(result);
         })
 
-        //<---post a new blog by admin--->
-        app.post("/add-blog", verifyToken, verifyAdmin, async (req, res) => {
+        //<---post a new blog by admin and trainer--->
+        app.post("/add-blog", verifyToken, async (req, res) => {
             if (req?.decoded?.email !== req.query.email) {
                 return res.status(403).send({ message: 'Forbidden Access' });
             }
             const newBlog = req.body;
-            
+
             const result = await blogsCollection.insertOne(newBlog);
+            res.send(result);
+        })
+
+        //<---get trainer all data by trainer--->
+        app.get("/trainer/:email", verifyToken, verifyTrainer, async (req, res) => {
+            if (req?.decoded?.email !== req.query.email) {
+                return res.status(403).send({ message: 'Forbidden Access' });
+            }
+            const email = req.params.email;
+            const query = { email: email }
+            const result = await trainersCollection.findOne(query);
+            res.send(result)
+        })
+
+        //<---get trainer all data by trainer--->
+        app.get("/trainer/:email", verifyToken, verifyTrainer, async (req, res) => {
+            if (req?.decoded?.email !== req.query.email) {
+                return res.status(403).send({ message: 'Forbidden Access' });
+            }
+            const email = req.params.email;
+            const query = { email: email }
+            const result = await trainersCollection.findOne(query);
+            res.send(result)
+        })
+        //<---get trainer all data by trainer--->
+        app.post("/add-slot", verifyToken, verifyTrainer, async (req, res) => {
+            if (req?.decoded?.email !== req.query.email) {
+                return res.status(403).send({ message: 'Forbidden Access' });
+            }
+            const newSlot = req.body;
+            const result = await slotsCollection.insertOne(newSlot);
+            res.send(result)
+        })
+
+        //<---get trainer's added slots--->
+        app.get("/trainer-slots/:id", async(req, res) => {
+            const id = req.params.id;
+            const query = { 'trainer.id': id, status: 'available' };
+            const result = await slotsCollection.find(query).toArray();
             res.send(result);
         })
 

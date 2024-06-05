@@ -317,14 +317,11 @@ async function run() {
                 if (isInUpVote === null) {
                     await upVotesCollection.insertOne(voteData);
                     const result1 = await blogsCollection.updateOne({ _id: new ObjectId(id) }, { $inc: { likes: 1 } });
-                } else {
-                    return;
                 }
+
                 if (isInDownVote !== null) {
                     await downVotesCollection.deleteOne(query);
                     const result2 =  await blogsCollection.updateOne({ _id: new ObjectId(id) }, { $inc: { dislikes: -1 } });
-                } else {
-                    return;
                 }
 
                 res.send({success: true});
@@ -335,15 +332,13 @@ async function run() {
                 if (isInUpVote !== null) {
                     await upVotesCollection.deleteOne(query);
                     const result1 = await blogsCollection.updateOne({ _id: new ObjectId(id) }, { $inc: { likes: -1 } });
-                } else {
-                    return;
                 }
+
                 if (isInDownVote === null) {
                     await downVotesCollection.insertOne(voteData);
                     const result2 = await blogsCollection.updateOne({ _id: new ObjectId(id) }, { $inc: { dislikes: 1 } });
-                } else {
-                    return;
-                }
+                } 
+
 
                 res.send({success: true});
             }

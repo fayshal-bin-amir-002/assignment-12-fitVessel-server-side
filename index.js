@@ -439,7 +439,7 @@ async function run() {
             if (req?.decoded?.email !== req.query.email) {
                 return res.status(403).send({ message: 'Forbidden Access' });
             }
-            const newSlots = req.body; console.log(newSlots);
+            const newSlots = req.body;
             const result = await slotsCollection.insertMany(newSlots);
             res.send(result)
         })
@@ -474,7 +474,7 @@ async function run() {
                 return res.status(403).send({ message: 'Forbidden Access' });
             }
 
-            const paymentData = req.body; console.log(paymentData);
+            const paymentData = req.body; 
             const name = paymentData.class.cName;
 
             // const query1 = { 'class.name': { $regex: name, $options: 'i' } };
@@ -557,6 +557,19 @@ async function run() {
                 email: email
             }
             const result = await trainersCollection.find(query).toArray();
+            res.send(result);
+        })
+
+        //<----get all classes that booked by the member ------>
+        app.get("/my-booking/:email", verifyToken, async (req, res) => {
+            if (req?.query?.email !== req.decoded.email) {
+                return res.status(403).send({ message: 'Forbidden Access' });
+            }
+            const email = req.params.email;
+            const query = {
+                'user.email': email
+            }
+            const result = await paymentsCollection.find(query).toArray();
             res.send(result);
         })
 

@@ -7,7 +7,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:5174']
+    origin: ['http://localhost:5173', 'http://localhost:5174', 'https://fit-vessel.netlify.app']
 }));
 app.use(express.json());
 
@@ -678,9 +678,6 @@ async function run() {
                     $sort: {
                         date: -1 // Sort by date field in descending order
                     }
-                },
-                {
-                    $limit: 6 // Limit to the most recent 6 transactions
                 },
                 {
                     $group: {

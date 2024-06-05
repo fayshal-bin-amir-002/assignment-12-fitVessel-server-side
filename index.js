@@ -183,43 +183,95 @@ async function run() {
         app.get("/classes", async (req, res) => {
 
             const page = parseInt(req.query.page);
+            const search = req.query.search;
 
-            const totalclass = await classesCollection.countDocuments();
 
-            const result = await classesCollection.aggregate([
-                {
-                    $lookup: {
-                        from: "trainers",
-                        let: { skill: "$name" },
-                        pipeline: [
-                            {
-                                $match: {
-                                    $expr: {
-                                        $and: [
-                                            { $in: ["$$skill", { $map: { input: "$skills", as: "skill", in: "$$skill.value" } }] },
-                                            { $eq: ["$status", "verified"] }
-                                        ]
+            if (search) {
+                const query = {
+                    name: { $regex: search, $options: 'i' }
+                }
+
+                const totalclass = await classesCollection.countDocuments(query);
+
+                const result = await classesCollection.aggregate([
+                    {
+                        $match: {
+                            name: { $regex: search, $options: 'i' }
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: "trainers",
+                            let: { skill: "$name" },
+                            pipeline: [
+                                {
+                                    $match: {
+                                        $expr: {
+                                            $and: [
+                                                { $in: ["$$skill", { $map: { input: "$skills", as: "skill", in: "$$skill.value" } }] },
+                                                { $eq: ["$status", "verified"] }
+                                            ]
+                                        }
+                                    }
+                                },
+                                {
+                                    $project: {
+                                        _id: 1,
+                                        image: 1
                                     }
                                 }
-                            },
-                            {
-                                $project: {
-                                    _id: 1,
-                                    image: 1
-                                }
-                            }
-                        ],
-                        as: "matchedTrainers"
+                            ],
+                            as: "matchedTrainers"
+                        }
+                    },
+                    {
+                        $addFields: {
+                            matchedTrainers: { $ifNull: ["$matchedTrainers", []] }
+                        }
                     }
-                },
-                {
-                    $addFields: {
-                        matchedTrainers: { $ifNull: ["$matchedTrainers", []] }
-                    }
-                }
-            ]).skip(page * 6).limit(6).toArray();
+                ]).skip(page * 6).limit(6).toArray();
+                res.send({ result, totalclass });
 
-            res.send({ result, totalclass });
+            } else {
+
+                const totalclass = await classesCollection.countDocuments();
+
+                const result = await classesCollection.aggregate([
+                    {
+                        $lookup: {
+                            from: "trainers",
+                            let: { skill: "$name" },
+                            pipeline: [
+                                {
+                                    $match: {
+                                        $expr: {
+                                            $and: [
+                                                { $in: ["$$skill", { $map: { input: "$skills", as: "skill", in: "$$skill.value" } }] },
+                                                { $eq: ["$status", "verified"] }
+                                            ]
+                                        }
+                                    }
+                                },
+                                {
+                                    $project: {
+                                        _id: 1,
+                                        image: 1
+                                    }
+                                }
+                            ],
+                            as: "matchedTrainers"
+                        }
+                    },
+                    {
+                        $addFields: {
+                            matchedTrainers: { $ifNull: ["$matchedTrainers", []] }
+                        }
+                    }
+                ]).skip(page * 6).limit(6).toArray();
+                res.send({ result, totalclass });
+            }
+
+
         })
 
         //<---api for all community posts--->
@@ -605,20 +657,20 @@ async function run() {
 
             const subscribesCount = await subscribesCollection.aggregate([
                 {
-                  $group: {
-                    _id: null,
-                    count: { $sum: 1 }
-                  }
+                    $group: {
+                        _id: null,
+                        count: { $sum: 1 }
+                    }
                 }
-              ]).toArray();
+            ]).toArray();
 
-              const chartData = [
+            const chartData = [
                 ["users", "count"],
                 ["Paid Members", info[0].paidMembers],
                 ["Newsletter Subscribers", subscribesCount[0].count]
-              ]
+            ]
 
-            res.send({info, subscribesCount, chartData});
+            res.send({ info, subscribesCount, chartData });
         })
 
 

@@ -474,7 +474,7 @@ async function run() {
                 return res.status(403).send({ message: 'Forbidden Access' });
             }
 
-            const paymentData = req.body; 
+            const paymentData = req.body;
             const name = paymentData.class.cName;
 
             // const query1 = { 'class.name': { $regex: name, $options: 'i' } };
@@ -571,6 +571,54 @@ async function run() {
             }
             const result = await paymentsCollection.find(query).toArray();
             res.send(result);
+        })
+
+        //<----get all payment data by admin ------>
+        app.get("/balance", verifyToken, verifyAdmin, async (req, res) => {
+            if (req?.query?.email !== req.decoded.email) {
+                return res.status(403).send({ message: 'Forbidden Access' });
+            }
+            const info = await paymentsCollection.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        totalBalance: { $sum: "$price" },
+                        transactions: {
+                            $push: {
+                                transactionId: "$transactionId",
+                                price: "$price",
+                                email: "$user.email"
+                            }
+                        },
+                        uniqueEmails: { $addToSet: "$user.email" }
+                    }
+                },
+                {
+                    $project: {
+                        _id: 0,
+                        totalBalance: 1,
+                        transactions: 1,
+                        paidMembers: { $size: "$uniqueEmails" }
+                    }
+                }
+            ]).toArray();
+
+            const subscribesCount = await subscribesCollection.aggregate([
+                {
+                  $group: {
+                    _id: null,
+                    count: { $sum: 1 }
+                  }
+                }
+              ]).toArray();
+
+              const chartData = [
+                ["users", "count"],
+                ["Paid Members", info[0].paidMembers],
+                ["Newsletter Subscribers", subscribesCount[0].count]
+              ]
+
+            res.send({info, subscribesCount, chartData});
         })
 
 

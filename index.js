@@ -42,6 +42,8 @@ async function run() {
         const classesCollection = database.collection("classes");
         const paymentsCollection = database.collection("payments");
         const slotsCollection = database.collection("slots");
+        const upVotesCollection = database.collection("upVotes");
+        const downVotesCollection = database.collection("downVotes");
 
 
         //<---middleware for verify token--->
@@ -121,7 +123,7 @@ async function run() {
 
         //<---get all blogs api--->
         app.get("/blogs", async (req, res) => {
-            const result = await blogsCollection.find().project({ title: 1, author: 1, postDate: 1, image: 1, description: 1 }).limit(6).toArray();
+            const result = await blogsCollection.find().project({ title: 1, author: 1, postDate: 1, image: 1, description: 1 }).sort({ 'postDate': -1 }).limit(6).toArray();
             res.send(result);
         })
 
@@ -281,25 +283,69 @@ async function run() {
 
             const totalBlogs = await blogsCollection.countDocuments();
 
-            const blogs = await blogsCollection.find().skip(page * 6).limit(6).toArray();
+            const blogs = await blogsCollection.find().sort({ 'postDate': -1 }).skip(page * 6).limit(6).toArray();
 
             res.send({ blogs, totalBlogs });
         })
 
         //<---api for patch a vote of community posts--->
         app.patch("/voteBlog", verifyToken, async (req, res) => {
+            if (req?.decoded?.email !== req.query.email) {
+                return res.status(403).send({ message: 'Forbidden Access' });
+            }
 
             const id = req.body.id;
             const vote = req.body.vote;
+            const email = req.body.email;
 
-            const query = { _id: new ObjectId(id) };
+            const query = {
+                $and: [
+                    { email: email },
+                    { blogId: id }
+                ]
+            }
+
+            const voteData = {
+                blogId: id,
+                email: email,
+                vote: vote
+            };
 
             if (vote === 'like') {
-                const result = await blogsCollection.updateOne(query, { $inc: { likes: 1 } });
-                res.send(result);
+                const isInUpVote = await upVotesCollection.findOne(query);
+                const isInDownVote = await downVotesCollection.findOne(query);
+                if (isInUpVote === null) {
+                    await upVotesCollection.insertOne(voteData);
+                    const result1 = await blogsCollection.updateOne({ _id: new ObjectId(id) }, { $inc: { likes: 1 } });
+                } else {
+                    return;
+                }
+                if (isInDownVote !== null) {
+                    await downVotesCollection.deleteOne(query);
+                    const result2 =  await blogsCollection.updateOne({ _id: new ObjectId(id) }, { $inc: { dislikes: -1 } });
+                } else {
+                    return;
+                }
+
+                res.send({success: true});
+
             } else {
-                const result = await blogsCollection.updateOne(query, { $inc: { dislikes: 1 } });
-                res.send(result);
+                const isInUpVote = await upVotesCollection.findOne(query);
+                const isInDownVote = await downVotesCollection.findOne(query);
+                if (isInUpVote !== null) {
+                    await upVotesCollection.deleteOne(query);
+                    const result1 = await blogsCollection.updateOne({ _id: new ObjectId(id) }, { $inc: { likes: -1 } });
+                } else {
+                    return;
+                }
+                if (isInDownVote === null) {
+                    await downVotesCollection.insertOne(voteData);
+                    const result2 = await blogsCollection.updateOne({ _id: new ObjectId(id) }, { $inc: { dislikes: 1 } });
+                } else {
+                    return;
+                }
+
+                res.send({success: true});
             }
         })
 
@@ -527,6 +573,7 @@ async function run() {
             }
 
             const paymentData = req.body;
+            const className = paymentData.class.cName;
             const name = paymentData.class.cName;
 
             // const query1 = { 'class.name': { $regex: name, $options: 'i' } };
@@ -539,7 +586,8 @@ async function run() {
                     status: "booked",
                     bookedBy: {
                         name: paymentData.user.name,
-                        email: paymentData.user.email
+                        email: paymentData.user.email,
+                        class_name: className
                     }
                 },
             };
@@ -631,6 +679,14 @@ async function run() {
                 return res.status(403).send({ message: 'Forbidden Access' });
             }
             const info = await paymentsCollection.aggregate([
+                {
+                    $sort: {
+                        date: -1 // Sort by date field in descending order
+                    }
+                },
+                {
+                    $limit: 6 // Limit to the most recent 6 transactions
+                },
                 {
                     $group: {
                         _id: null,
